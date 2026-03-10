@@ -19,6 +19,7 @@
 	<description>E-commerce: Products Service + Inventory Service</description>
 
 	<modules>
+		<module>ecommerce-jsonapi-model</module>
 		<module>products-service</module>
 		<module>inventory-service</module>
 	</modules>
@@ -40,6 +41,11 @@
 				<groupId>io.github.resilience4j</groupId>
 				<artifactId>resilience4j-spring-boot3</artifactId>
 				<version>${resilience4j.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>ecommerce.app</groupId>
+				<artifactId>ecommerce-jsonapi-model</artifactId>
+				<version>${project.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>ecommerce.app</groupId>

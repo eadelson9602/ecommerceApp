@@ -167,7 +167,7 @@ Ejecutar todos los tests:
 
 ### Cobertura de código (JaCoCo)
 
-La cobertura se genera con **JaCoCo** en cada ejecución de tests. **Objetivo nivel senior: 70–80%** de líneas cubiertas. El POM exige un **mínimo del 70%** en servicios de aplicación y dominio; `./mvnw verify` falla si no se alcanza (dentro del rango 70–80%).
+La cobertura se genera con **JaCoCo** en cada ejecución de tests. **Objetivo: 70–80%** de líneas cubiertas. El POM exige un **mínimo del 70%** en servicios de aplicación y dominio; `./mvnw verify` falla si no se alcanza (dentro del rango 70–80%).
 
 1. **Solo tests e informe de cobertura** (sin fallar si no llegas al mínimo):
 
@@ -175,7 +175,7 @@ La cobertura se genera con **JaCoCo** en cada ejecución de tests. **Objetivo ni
    ./mvnw test -pl products-service,inventory-service -am
    ```
 
-2. **Tests + verificación de cobertura mínima 70%** (recomendado para CI / nivel senior):
+2. **Tests + verificación de cobertura mínima 70%** (recomendado para CI):
 
    ```bash
    ./mvnw verify -pl products-service,inventory-service -am
@@ -222,15 +222,17 @@ Token propio del servidor local (no uses el de SonarCloud).
    ```
    La etiqueta `community` usa la última Community Edition activa. Para una versión fija, consulta [Docker Hub – sonarqube/tags](https://hub.docker.com/_/sonarqube/tags) y elige una etiqueta reciente (p. ej. `10.4-community`).
 2. Cuando esté listo, abre http://localhost:9000. Inicia sesión con `admin` / `admin` (la primera vez te pedirá cambiar la contraseña). **Para generar el token:** clic en el icono de tu usuario (arriba a la derecha) → **My Account** → pestaña **Security** → en "Generate Tokens" pon un nombre (ej. `ecommerce-local`) → **Generate** y copia el token (solo se muestra una vez).
-3. Genera cobertura y ejecuta el análisis:
+3. Genera cobertura y ejecuta el análisis. **Importante:** el plugin de Maven **no** lee la variable de entorno `SONAR_TOKEN`; hay que pasarla con `-Dsonar.token=...`. Si tienes `SONAR_TOKEN` y `SONAR_HOST_URL` en tu `.env`, usa:
    ```bash
    ./mvnw verify -pl products-service,inventory-service -am
-   export SONAR_TOKEN=tu_token_creado_en_el_paso_2
-   ./mvnw sonar:sonar -Dsonar.host.url=http://localhost:9000
+   set -a && [ -f .env ] && . ./.env && set +a
+   ./mvnw sonar:sonar -Dsonar.host.url=${SONAR_HOST_URL:-http://localhost:9000} -Dsonar.token="$SONAR_TOKEN"
    ```
+   O ejecuta el script incluido (carga `.env` y pasa el token): `./run-sonar.sh`
+   Alternativa sin `.env`: `./mvnw sonar:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=tu_token_creado_en_el_paso_2`
 4. Revisa el resultado en http://localhost:9000 (el proyecto aparecerá en el listado).
 
-**Actualizar SonarQube local (quitar aviso "no longer active"):** para reemplazar un contenedor antiguo por una versión activa (los datos en volúmenes se conservan si los reutilizas):
+**Actualizar SonarQube local:** para reemplazar un contenedor antiguo por una versión activa (los datos en volúmenes se conservan si los reutilizas):
 
 ```bash
 docker stop sonarqube && docker rm sonarqube
@@ -260,12 +262,13 @@ Token propio de SonarCloud (no sirve para el servidor local).
 
 1. Entra en [sonarcloud.io](https://sonarcloud.io), crea o vincula el repositorio y anota la **organization** y el **project key** que te asigne.
 2. Crea un token en **My Account → Security** en la web de SonarCloud (icono de usuario → My Account → Security → Generate Tokens).
-3. Genera cobertura y ejecuta el análisis (sustituye `TU_ORG` y `TU_PROJECT_KEY` por los del paso 1):
+3. Genera cobertura y ejecuta el análisis. El plugin Maven **no** lee `SONAR_TOKEN` del entorno; hay que pasarla con `-Dsonar.token=...`. Si tienes las variables en `.env`:
    ```bash
    ./mvnw verify -pl products-service,inventory-service -am
-   export SONAR_TOKEN=tu_token_sonarcloud
-   ./mvnw sonar:sonar -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=TU_ORG -Dsonar.projectKey=TU_PROJECT_KEY
+   set -a && [ -f .env ] && . ./.env && set +a
+   ./mvnw sonar:sonar -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization="$SONAR_ORGANIZATION" -Dsonar.projectKey="$SONAR_PROJECT_KEY" -Dsonar.token="$SONAR_TOKEN"
    ```
+   Sustituye en `.env` (o en el comando) `SONAR_ORGANIZATION` y `SONAR_PROJECT_KEY` por los del paso 1. Alternativa sin `.env`: pasar `-Dsonar.token=tu_token -Dsonar.organization=TU_ORG -Dsonar.projectKey=TU_PROJECT_KEY`.
 4. Revisa el resultado en la web de SonarCloud, en el proyecto correspondiente.
 
 ---

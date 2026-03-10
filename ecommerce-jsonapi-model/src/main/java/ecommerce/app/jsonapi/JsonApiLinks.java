@@ -1,4 +1,4 @@
-package ecommerce.app.products.infrastructure.web;
+package ecommerce.app.jsonapi;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

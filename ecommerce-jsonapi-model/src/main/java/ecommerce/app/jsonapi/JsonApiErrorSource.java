@@ -1,4 +1,4 @@
-package ecommerce.app.products.infrastructure.web;
+package ecommerce.app.jsonapi;
 
 public class JsonApiErrorSource {
 	private String pointer;

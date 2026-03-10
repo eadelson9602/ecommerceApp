@@ -43,6 +43,19 @@ class InventoryControllerIntegrationTest {
 
 	@Test
 	@WithMockUser
+	void getInventory_whenProductNotFound_returns404() throws Exception {
+		UUID productId = UUID.randomUUID();
+		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.empty());
+
+		mockMvc.perform(get("/api/inventory/" + productId)
+						.accept(JSON_API))
+				.andExpect(status().isNotFound())
+				.andExpect(content().contentTypeCompatibleWith(JSON_API))
+				.andExpect(jsonPath("$.errors[0].code").value("NOT_FOUND"));
+	}
+
+	@Test
+	@WithMockUser
 	void getInventory_whenProductExistsButNoInventory_returns404() throws Exception {
 		UUID productId = UUID.randomUUID();
 		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
@@ -72,6 +85,20 @@ class InventoryControllerIntegrationTest {
 						.accept(JSON_API))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.attributes.available").value(100));
+	}
+
+	@Test
+	@WithMockUser
+	void setInventory_bodyWithoutAvailableKey_usesZero() throws Exception {
+		UUID productId = UUID.randomUUID();
+		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
+
+		mockMvc.perform(put("/api/inventory/" + productId)
+						.contentType(JSON_API)
+						.accept(JSON_API)
+						.content("{}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.attributes.available").value(0));
 	}
 
 	@Test
@@ -166,5 +193,66 @@ class InventoryControllerIntegrationTest {
 						.accept(JSON_API)
 						.content(body))
 				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@WithMockUser
+	void purchase_whenProductNotFound_returns404() throws Exception {
+		UUID productId = UUID.randomUUID();
+		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.empty());
+
+		String purchaseBody = """
+				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":1}}}
+				""".formatted(productId);
+
+		mockMvc.perform(post("/api/purchases")
+						.contentType(JSON_API)
+						.accept(JSON_API)
+						.content(purchaseBody))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.errors[0].code").value("NOT_FOUND"));
+	}
+
+	@Test
+	@WithMockUser
+	void purchase_whenInventoryNotFound_returns404() throws Exception {
+		UUID productId = UUID.randomUUID();
+		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
+		// No creamos inventario con setInventory
+
+		String purchaseBody = """
+				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":1}}}
+				""".formatted(productId);
+
+		mockMvc.perform(post("/api/purchases")
+						.contentType(JSON_API)
+						.accept(JSON_API)
+						.content(purchaseBody))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.errors[0].code").value("INVENTORY_NOT_FOUND"));
+	}
+
+	@Test
+	@WithMockUser
+	void purchase_whenInsufficientStock_returns422() throws Exception {
+		UUID productId = UUID.randomUUID();
+		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
+
+		mockMvc.perform(put("/api/inventory/" + productId)
+						.contentType(JSON_API)
+						.accept(JSON_API)
+						.content("{\"available\": 2}"))
+				.andExpect(status().isOk());
+
+		String purchaseBody = """
+				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":5}}}
+				""".formatted(productId);
+
+		mockMvc.perform(post("/api/purchases")
+						.contentType(JSON_API)
+						.accept(JSON_API)
+						.content(purchaseBody))
+				.andExpect(status().isUnprocessableEntity())
+				.andExpect(jsonPath("$.errors[0].code").value("INSUFFICIENT_STOCK"));
 	}
 }

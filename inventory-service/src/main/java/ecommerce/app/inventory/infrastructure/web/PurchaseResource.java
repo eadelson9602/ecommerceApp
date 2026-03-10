@@ -1,6 +1,7 @@
 package ecommerce.app.inventory.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import ecommerce.app.inventory.domain.Purchase;
 
 import java.util.Map;
@@ -10,13 +11,14 @@ import java.util.UUID;
 public class PurchaseResource {
 	public static final String TYPE = "purchases";
 
-	private String type = TYPE;
+	@JsonProperty("type")
+	private String resourceType = TYPE;
 	private UUID id;
 	private Map<String, Object> attributes;
 
 	public static PurchaseResource from(Purchase p) {
 		PurchaseResource r = new PurchaseResource();
-		r.setType(TYPE);
+		r.setResourceType(TYPE);
 		r.setId(p.getId());
 		r.setAttributes(Map.of(
 				"productId", p.getProductId().toString(),
@@ -26,8 +28,8 @@ public class PurchaseResource {
 		return r;
 	}
 
-	public String getType() { return type; }
-	public void setType(String type) { this.type = type; }
+	public String getResourceType() { return resourceType; }
+	public void setResourceType(String resourceType) { this.resourceType = resourceType; }
 	public UUID getId() { return id; }
 	public void setId(UUID id) { this.id = id; }
 	public Map<String, Object> getAttributes() { return attributes; }

@@ -1,5 +1,8 @@
 package ecommerce.app.products.infrastructure.web;
 
+import ecommerce.app.jsonapi.JsonApiDocument;
+import ecommerce.app.jsonapi.JsonApiError;
+import ecommerce.app.jsonapi.JsonApiLinks;
 import ecommerce.app.products.application.model.CreateProductCommand;
 import ecommerce.app.products.application.model.ProductFilter;
 import ecommerce.app.products.application.model.UpdateProductCommand;
@@ -59,7 +62,7 @@ public class ProductController {
 			@ApiResponse(responseCode = "403", description = "Acceso denegado")
 	})
 	@GetMapping(produces = JSON_API_MEDIA_TYPE)
-	public JsonApiDocument<?> list(
+	public JsonApiDocument<List<ProductResource>> list(
 			@Parameter(description = "ACTIVE o INACTIVE") @RequestParam(required = false) String status,
 			@Parameter(description = "Búsqueda por sku o nombre") @RequestParam(name = "filter[search]", required = false) String search,
 			@Parameter(description = "Número de página (base 1)") @RequestParam(name = "page[number]", defaultValue = "1") int pageNumber,
@@ -84,7 +87,7 @@ public class ProductController {
 				.next(page.hasNext() ? String.format(base, page.getNumber() + 2, pageSize) : null)
 				.build();
 		List<ProductResource> content = page.getContent().stream().map(ProductResource::from).toList();
-		return (JsonApiDocument<?>) JsonApiDocument.builder()
+		return JsonApiDocument.<List<ProductResource>>builder()
 				.data(content)
 				.links(links)
 				.meta(java.util.Map.of("totalRecords", page.getTotalElements()))

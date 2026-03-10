@@ -1,5 +1,7 @@
 package ecommerce.app.inventory.infrastructure.web;
 
+import ecommerce.app.jsonapi.JsonApiDocument;
+import ecommerce.app.jsonapi.JsonApiError;
 import ecommerce.app.inventory.infrastructure.client.ProductsServiceUnavailableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

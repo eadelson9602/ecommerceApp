@@ -1,6 +1,8 @@
 package ecommerce.app.inventory.infrastructure.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import ecommerce.app.jsonapi.JsonApiDocument;
+import ecommerce.app.jsonapi.JsonApiError;
 import ecommerce.app.inventory.application.model.GetInventoryResult;
 import ecommerce.app.inventory.application.model.PurchaseResult;
 import ecommerce.app.inventory.application.model.PurchaseResult.Type;
@@ -47,8 +49,7 @@ public class InventoryController {
 			ProcessPurchaseUseCase processPurchaseUseCase,
 			SetInventoryUseCase setInventoryUseCase,
 			IdempotencyRecordPort idempotencyRecordPort,
-			ObjectMapper objectMapper
-	) {
+			ObjectMapper objectMapper) {
 		this.getInventoryUseCase = getInventoryUseCase;
 		this.processPurchaseUseCase = processPurchaseUseCase;
 		this.setInventoryUseCase = setInventoryUseCase;
@@ -68,12 +69,15 @@ public class InventoryController {
 		GetInventoryResult result = getInventoryUseCase.getInventoryValidatingProduct(productId);
 		GetInventoryResult.Type type = result.getType();
 		if (type == GetInventoryResult.Type.SUCCESS) {
-			return ResponseEntity.ok(JsonApiDocument.builder().data(InventoryResource.from(result.getInventory())).build());
+			return ResponseEntity
+					.ok(JsonApiDocument.builder().data(InventoryResource.from(result.getInventory())).build());
 		}
 		if (type == GetInventoryResult.Type.PRODUCT_NOT_FOUND) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Producto no encontrado", result.getErrorDetail()));
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+					errorDocument("404", result.getErrorCode(), "Producto no encontrado", result.getErrorDetail()));
 		}
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Inventario no encontrado", result.getErrorDetail()));
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(errorDocument("404", result.getErrorCode(), "Inventario no encontrado", result.getErrorDetail()));
 	}
 
 	@Operation(summary = "Crear o actualizar inventario", description = "Crea o actualiza el stock disponible de un producto. Body: {\"available\": <número >= 0}.")
@@ -89,7 +93,8 @@ public class InventoryController {
 		Object availableObj = body != null && body.containsKey("available") ? body.get("available") : null;
 		int available = availableObj instanceof Number ? ((Number) availableObj).intValue() : 0;
 		if (available < 0) {
-			return ResponseEntity.badRequest().body(errorDocument("422", "VALIDATION_FAILED", "available must be >= 0", null));
+			return ResponseEntity.badRequest()
+					.body(errorDocument("422", "VALIDATION_FAILED", "available must be >= 0", null));
 		}
 		var inventory = setInventoryUseCase.setOrUpdateInventory(productId, available);
 		return ResponseEntity.ok(JsonApiDocument.builder().data(InventoryResource.from(inventory)).build());
@@ -106,12 +111,12 @@ public class InventoryController {
 	@PostMapping(value = "/purchases", consumes = JSON_API_MEDIA_TYPE, produces = JSON_API_MEDIA_TYPE)
 	public ResponseEntity<?> purchase(
 			@Valid @RequestBody PurchaseRequest request,
-			@Parameter(description = "Clave idempotente para evitar doble descuento en reintentos") @RequestHeader(value = IDEMPOTENCY_KEY_HEADER, required = false) String idempotencyKey
-	) {
+			@Parameter(description = "Clave idempotente para evitar doble descuento en reintentos") @RequestHeader(value = IDEMPOTENCY_KEY_HEADER, required = false) String idempotencyKey) {
 		UUID productId = request.getProductId();
 		Integer quantity = request.getQuantity();
 		if (productId == null || quantity == null) {
-			return ResponseEntity.badRequest().body(errorDocument("422", "VALIDATION_FAILED", "productId y quantity son requeridos.", null));
+			return ResponseEntity.badRequest()
+					.body(errorDocument("422", "VALIDATION_FAILED", "productId y quantity son requeridos.", null));
 		}
 		PurchaseResult result = processPurchaseUseCase.processPurchase(productId, quantity, idempotencyKey);
 		Type resultType = result.getType();
@@ -127,26 +132,32 @@ public class InventoryController {
 				record.setCreatedAt(Instant.now());
 				idempotencyRecordPort.save(record);
 			}
-			return ResponseEntity.status(HttpStatus.CREATED).body(JsonApiDocument.builder().data(PurchaseResource.from(result.getPurchase())).build());
+			return ResponseEntity.status(HttpStatus.CREATED)
+					.body(JsonApiDocument.builder().data(PurchaseResource.from(result.getPurchase())).build());
 		}
 		if (resultType == Type.IDEMPOTENT_RESPONSE) {
 			try {
 				Object body = objectMapper.readValue(result.getCachedResponseBody(), JsonApiDocument.class);
 				return ResponseEntity.status(result.getHttpStatus()).body(body);
 			} catch (Exception e) {
-				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorDocument("500", "IDEMPOTENCY_ERROR", "Error recovering idempotent response", null));
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+						.body(errorDocument("500", "IDEMPOTENCY_ERROR", "Error recovering idempotent response", null));
 			}
 		}
 		if (resultType == Type.PRODUCT_NOT_FOUND) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Producto no encontrado", result.getErrorDetail()));
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+					errorDocument("404", result.getErrorCode(), "Producto no encontrado", result.getErrorDetail()));
 		}
 		if (resultType == Type.INVENTORY_NOT_FOUND) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Inventario no encontrado", result.getErrorDetail()));
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+					errorDocument("404", result.getErrorCode(), "Inventario no encontrado", result.getErrorDetail()));
 		}
 		if (resultType == Type.INSUFFICIENT_STOCK) {
-			return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorDocument("422", result.getErrorCode(), "Stock insuficiente", result.getErrorDetail()));
+			return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+					.body(errorDocument("422", result.getErrorCode(), "Stock insuficiente", result.getErrorDetail()));
 		}
-		return ResponseEntity.status(HttpStatus.CONFLICT).body(errorDocument("409", result.getErrorCode(), "Conflicto", result.getErrorDetail()));
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(errorDocument("409", result.getErrorCode(), "Conflicto", result.getErrorDetail()));
 	}
 
 	private String toJson(Object obj) {

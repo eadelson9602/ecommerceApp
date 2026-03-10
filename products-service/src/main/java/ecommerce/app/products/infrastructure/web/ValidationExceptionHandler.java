@@ -1,5 +1,8 @@
 package ecommerce.app.products.infrastructure.web;
 
+import ecommerce.app.jsonapi.JsonApiDocument;
+import ecommerce.app.jsonapi.JsonApiError;
+import ecommerce.app.jsonapi.JsonApiErrorSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -7,7 +10,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class ValidationExceptionHandler {
@@ -22,7 +24,7 @@ public class ValidationExceptionHandler {
 						.detail(fe.getDefaultMessage())
 						.source(new JsonApiErrorSource("/data/attributes/" + fe.getField(), null))
 						.build())
-				.collect(Collectors.toList());
+				.toList();
 		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
 				.body(JsonApiDocument.builder().errors(errors).build());
 	}

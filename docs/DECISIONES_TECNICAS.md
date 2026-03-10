@@ -35,3 +35,9 @@
 - **Correlation-id**: Filtro que lee o genera `X-Correlation-ID`, lo pone en MDC y lo devuelve en la respuesta. El patrón de log incluye `%X{correlationId}`.
 - **Health**: Actuator con `livenessState` y `readinessState` (Kubernetes/Docker).
 - **Métricas**: Actuator expone `health`, `info`, `metrics`.
+
+## Pruebas y calidad (JaCoCo, SonarQube)
+
+- **JaCoCo – exclusión de HtmlUnit**: Las pruebas E2E usan HtmlUnit (Selenium). JaCoCo intenta instrumentar todas las clases cargadas; algunas de HtmlUnit tienen métodos muy grandes y provocan `MethodTooLargeException`. En el POM padre, el agente JaCoCo excluye `com.gargoylesoftware.**` y `net.sourceforge.htmlunit.**` para evitar esos fallos; los tests siguen pasando y la cobertura de nuestro código no se ve afectada.
+- **SonarQube – compatibilidad con ECJ**: El analizador Java de Sonar (ECJ) puede fallar al parsear ciertas construcciones (p. ej. expresiones `switch` con bloques y `yield`). Si aparece "Unable to parse source file" en un controlador, se reescribe el `switch` a una cadena de `if (type == ...) return ...` para que ECJ analice el archivo correctamente. El análisis global sigue siendo correcto aunque un archivo falle (el resto se analiza).
+- **Cobertura en Sonar**: Los informes JaCoCo (`jacoco.xml`) se generan por módulo; en un reactor Maven el padre define `sonar.coverage.jacoco.xmlReportPaths` con rutas relativas al proyecto raíz. Sonar puede mostrar aviso en cada submódulo; al final el agregado del padre importa los informes y la cobertura se refleja en el dashboard.

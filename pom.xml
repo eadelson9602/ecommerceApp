@@ -63,6 +63,11 @@
 				<version>${testcontainers.version}</version>
 				<scope>test</scope>
 			</dependency>
+			<dependency>
+				<groupId>io.github.cdimascio</groupId>
+				<artifactId>dotenv-java</artifactId>
+				<version>3.0.0</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
@@ -82,6 +87,11 @@
 							<phase>initialize</phase>
 							<configuration>
 								<propertyName>surefireArgLine</propertyName>
+								<!-- Evitar MethodTooLargeException al instrumentar HtmlUnit (E2E); no aporta a cobertura de nuestro código -->
+								<excludes>
+									<exclude>com.gargoylesoftware.**</exclude>
+									<exclude>net.sourceforge.htmlunit.**</exclude>
+								</excludes>
 							</configuration>
 						</execution>
 						<execution>

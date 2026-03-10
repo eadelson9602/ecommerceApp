@@ -3,6 +3,7 @@ package ecommerce.app.inventory.infrastructure.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ecommerce.app.inventory.application.model.GetInventoryResult;
 import ecommerce.app.inventory.application.model.PurchaseResult;
+import ecommerce.app.inventory.application.model.PurchaseResult.Type;
 import ecommerce.app.inventory.application.port.in.GetInventoryUseCase;
 import ecommerce.app.inventory.application.port.in.ProcessPurchaseUseCase;
 import ecommerce.app.inventory.application.port.in.SetInventoryUseCase;
@@ -65,11 +66,14 @@ public class InventoryController {
 	public ResponseEntity<JsonApiDocument<?>> getInventory(
 			@Parameter(description = "UUID del producto") @PathVariable UUID productId) {
 		GetInventoryResult result = getInventoryUseCase.getInventoryValidatingProduct(productId);
-		return switch (result.getType()) {
-			case SUCCESS -> ResponseEntity.ok(JsonApiDocument.builder().data(InventoryResource.from(result.getInventory())).build());
-			case PRODUCT_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Producto no encontrado", result.getErrorDetail()));
-			case INVENTORY_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Inventario no encontrado", result.getErrorDetail()));
-		};
+		GetInventoryResult.Type type = result.getType();
+		if (type == GetInventoryResult.Type.SUCCESS) {
+			return ResponseEntity.ok(JsonApiDocument.builder().data(InventoryResource.from(result.getInventory())).build());
+		}
+		if (type == GetInventoryResult.Type.PRODUCT_NOT_FOUND) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Producto no encontrado", result.getErrorDetail()));
+		}
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Inventario no encontrado", result.getErrorDetail()));
 	}
 
 	@Operation(summary = "Crear o actualizar inventario", description = "Crea o actualiza el stock disponible de un producto. Body: {\"available\": <número >= 0}.")
@@ -110,34 +114,39 @@ public class InventoryController {
 			return ResponseEntity.badRequest().body(errorDocument("422", "VALIDATION_FAILED", "productId y quantity son requeridos.", null));
 		}
 		PurchaseResult result = processPurchaseUseCase.processPurchase(productId, quantity, idempotencyKey);
+		Type resultType = result.getType();
 
-		return switch (result.getType()) {
-			case SUCCESS -> {
-				if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-					PurchaseResource resource = PurchaseResource.from(result.getPurchase());
-					String bodyJson = toJson(JsonApiDocument.builder().data(resource).build());
-					IdempotencyRecord record = new IdempotencyRecord();
-					record.setIdempotencyKey(idempotencyKey);
-					record.setResponseStatus(201);
-					record.setResponseBody(bodyJson);
-					record.setCreatedAt(Instant.now());
-					idempotencyRecordPort.save(record);
-				}
-				yield ResponseEntity.status(HttpStatus.CREATED).body(JsonApiDocument.builder().data(PurchaseResource.from(result.getPurchase())).build());
+		if (resultType == Type.SUCCESS) {
+			if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+				PurchaseResource resource = PurchaseResource.from(result.getPurchase());
+				String bodyJson = toJson(JsonApiDocument.builder().data(resource).build());
+				IdempotencyRecord record = new IdempotencyRecord();
+				record.setIdempotencyKey(idempotencyKey);
+				record.setResponseStatus(201);
+				record.setResponseBody(bodyJson);
+				record.setCreatedAt(Instant.now());
+				idempotencyRecordPort.save(record);
 			}
-			case IDEMPOTENT_RESPONSE -> {
-				try {
-					Object body = objectMapper.readValue(result.getCachedResponseBody(), JsonApiDocument.class);
-					yield ResponseEntity.status(result.getHttpStatus()).body(body);
-				} catch (Exception e) {
-					yield ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorDocument("500", "IDEMPOTENCY_ERROR", "Error recovering idempotent response", null));
-				}
+			return ResponseEntity.status(HttpStatus.CREATED).body(JsonApiDocument.builder().data(PurchaseResource.from(result.getPurchase())).build());
+		}
+		if (resultType == Type.IDEMPOTENT_RESPONSE) {
+			try {
+				Object body = objectMapper.readValue(result.getCachedResponseBody(), JsonApiDocument.class);
+				return ResponseEntity.status(result.getHttpStatus()).body(body);
+			} catch (Exception e) {
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorDocument("500", "IDEMPOTENCY_ERROR", "Error recovering idempotent response", null));
 			}
-			case PRODUCT_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Producto no encontrado", result.getErrorDetail()));
-			case INVENTORY_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Inventario no encontrado", result.getErrorDetail()));
-			case INSUFFICIENT_STOCK -> ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorDocument("422", result.getErrorCode(), "Stock insuficiente", result.getErrorDetail()));
-			case CONFLICT -> ResponseEntity.status(HttpStatus.CONFLICT).body(errorDocument("409", result.getErrorCode(), "Conflicto", result.getErrorDetail()));
-		};
+		}
+		if (resultType == Type.PRODUCT_NOT_FOUND) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Producto no encontrado", result.getErrorDetail()));
+		}
+		if (resultType == Type.INVENTORY_NOT_FOUND) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", result.getErrorCode(), "Inventario no encontrado", result.getErrorDetail()));
+		}
+		if (resultType == Type.INSUFFICIENT_STOCK) {
+			return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorDocument("422", result.getErrorCode(), "Stock insuficiente", result.getErrorDetail()));
+		}
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(errorDocument("409", result.getErrorCode(), "Conflicto", result.getErrorDetail()));
 	}
 
 	private String toJson(Object obj) {

@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Env (secretos locales; usar .env-template como plantilla) ###
+.env
+.env.local

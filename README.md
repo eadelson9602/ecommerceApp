@@ -140,7 +140,7 @@ Los tests de integración usan **H2** en perfil `test` (no requieren Docker). Pa
 ## 5. Seguridad y endpoints
 
 - **Entre servicios**: Header `X-API-Key` con el valor configurado en `app.internal.api-key` (Products valida; Inventory lo envía en las llamadas a Products).
-- **Frontend / usuarios**: Login en Products (`POST /auth/login`) devuelve un JWT. Enviar `Authorization: Bearer <token>` en las peticiones a `/api/**` de ambos servicios.
+- **Frontend / usuarios**: Login en Products (`POST /auth/login`) devuelve un JWT. Enviar `Authorization: Bearer <token>` en las peticiones a `/api/**` de ambos servicios. Los seeders crean usuarios por defecto: **admin**, **operator** y **viewer**, todos con contraseña **`password`** (véase [Datos iniciales (seeders)](#datos-iniciales-seeders)).
 - **Rate limit**: Por IP, configurable; respuestas 429 cuando se supera el límite.
 - **Content-Type**: API en formato JSON:API (`Content-Type` y `Accept: application/vnd.api+json`).
 
@@ -357,13 +357,27 @@ En producción, **products-service** debe estar disponible antes de que **invent
 
 ### Datos iniciales (seeders)
 
-Con Flyway habilitado (por defecto en desarrollo/producción), al arrancar se ejecutan migraciones que insertan datos de prueba:
+Con Flyway habilitado (por defecto en desarrollo/producción), al arrancar se ejecutan migraciones que insertan datos de prueba tanto en local como en producción.
+
+#### Usuarios creados por defecto (products-service)
+
+La migración `V4__seed_users.sql` crea tres usuarios en la tabla `users`. **Todos usan la misma contraseña** (cambiar en producción):
+
+| Usuario   | Contraseña | Rol  | Uso recomendado      |
+| --------- | ---------- | ---- | --------------------- |
+| `admin`   | `password` | ADMIN | Administración        |
+| `operator`| `password` | USER  | Operaciones / CRUD    |
+| `viewer`  | `password` | USER  | Solo lectura          |
+
+Para iniciar sesión desde el frontend o con `POST /auth/login` (Products), usar cualquiera de estos usuarios con contraseña `password`. El JWT devuelto sirve para llamar a `/api/**` en Products e Inventory.
+
+#### Resumen de migraciones con datos de prueba
 
 | Servicio              | Migración                    | Contenido                                                                                                |
 | --------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
 | **products-service**  | `V2__create_users_table.sql` | Tabla `users` (username, password_hash, role).                                                           |
 |                       | `V3__seed_products.sql`      | 5 productos básicos (Laptop, Mouse, Teclado, Monitor, Webcam) con UUIDs fijos.                           |
-|                       | `V4__seed_users.sql`         | Usuario **admin** (rol ADMIN), **operator** y **viewer** (rol USER). Contraseña por defecto: `password`. |
+|                       | `V4__seed_users.sql`         | Los 3 usuarios anteriores (admin, operator, viewer; contraseña `password`).                              |
 | **inventory-service** | `V2__seed_inventory.sql`     | Stock inicial para los 5 productos anteriores (mismos UUIDs).                                            |
 
 En perfil `test` Flyway está desactivado y se usa H2 con `ddl-auto=create-drop`, por lo que los seeders no se aplican en pruebas. En producción, cambiar la contraseña por defecto de los usuarios.

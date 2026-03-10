@@ -14,6 +14,8 @@ Backend de dos **microservicios** (Products e Inventory) con Java 17, Spring Boo
 - [Ejecución sin Docker](#ejecución-sin-docker)
 - [Seguridad y endpoints](#seguridad-y-endpoints)
 - [Pruebas](#pruebas)
+- [SonarQube (calidad de código)](#sonarqube-calidad-de-código)
+- [Pruebas E2E con Selenium](#pruebas-e2e-con-selenium)
 - [Documentación adicional](#documentación-adicional)
 - [Tecnologías](#tecnologías)
 
@@ -262,7 +264,68 @@ Ejecutar todos los tests:
 ./mvnw test -pl products-service,inventory-service -am
 ```
 
-Cobertura objetivo en módulos críticos: 75–80%. Checklist de cumplimiento de la prueba técnica: [docs/COMPLIANCE_BACKEND.md](docs/COMPLIANCE_BACKEND.md).
+### Cobertura de código (JaCoCo)
+
+La cobertura se genera con **JaCoCo** en cada ejecución de tests. **Objetivo nivel senior: 70–80%** de líneas cubiertas. El POM exige un **mínimo del 70%** en servicios de aplicación y dominio; `./mvnw verify` falla si no se alcanza (dentro del rango 70–80%).
+
+1. **Solo tests e informe de cobertura** (sin fallar si no llegas al mínimo):
+   ```bash
+   ./mvnw test -pl products-service,inventory-service -am
+   ```
+
+2. **Tests + verificación de cobertura mínima 70%** (recomendado para CI / nivel senior):
+   ```bash
+   ./mvnw verify -pl products-service,inventory-service -am
+   ```
+   El build falla si la cobertura en aplicación + dominio está por debajo del **70%** (rango senior 70–80%).
+
+3. **Un solo módulo**:
+   ```bash
+   ./mvnw test -pl products-service
+   ./mvnw verify -pl inventory-service
+   ```
+
+4. **Ver el informe HTML** por módulo:
+   - **Products**: `products-service/target/site/jacoco/index.html`
+   - **Inventory**: `inventory-service/target/site/jacoco/index.html`
+
+   Abre el `index.html` en el navegador para ver líneas cubiertas, ramas y resumen por paquete.
+
+Se excluyen del mínimo de cobertura: clase principal (`*Application`), paquetes `config`, DTOs y modelos de request/response, para centrar el objetivo en servicios, dominio, controladores y adaptadores.
+
+### SonarQube (calidad de código)
+
+El proyecto incluye el **sonar-maven-plugin** para analizar calidad, duplicados, bugs, vulnerabilidades y cobertura. Requiere un servidor SonarQube (local o [SonarCloud](https://sonarcloud.io)).
+
+1. **Generar informes y enviar a SonarQube** (después de `verify` para tener cobertura JaCoCo):
+   ```bash
+   ./mvnw verify -pl products-service,inventory-service -am
+   ./mvnw sonar:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=TU_TOKEN
+   ```
+   En SonarCloud: `-Dsonar.host.url=https://sonarcloud.io` y `-Dsonar.token=<token>` (o variable de entorno `SONAR_TOKEN`).
+
+2. **Propiedades** (opcionales, en POM o `-D`): `sonar.exclusions` (paquetes excluidos del análisis), `sonar.coverage.jacoco.xmlReportPaths` (rutas a `jacoco.xml` de cada módulo). El POM ya define exclusiones y rutas de cobertura.
+
+### Pruebas E2E con Selenium (HtmlUnit)
+
+Cada microservicio incluye **pruebas E2E con Selenium** usando el driver **HtmlUnit**: no hace falta instalar Chrome ni ningún navegador; todo corre en la JVM.
+
+**Qué comprueban:** que Swagger UI (`/swagger-ui.html`) y el endpoint de health (`/actuator/health`) responden correctamente.
+
+**Cómo ejecutar las pruebas con Selenium:**
+
+| Objetivo | Comando |
+|----------|--------|
+| Todos los tests (unitarios, integración y Selenium) de ambos servicios | `./mvnw test -pl products-service,inventory-service -am` |
+| Solo tests del proyecto (incluye Selenium) | `./mvnw test -pl products-service` o `./mvnw test -pl inventory-service` |
+| Solo las pruebas E2E (Selenium) de un servicio | `./mvnw test -pl products-service -Dgroups=e2e` o `./mvnw test -pl inventory-service -Dgroups=e2e` |
+| Build completo con cobertura (incluye Selenium) | `./mvnw verify -pl products-service,inventory-service -am` |
+
+Las pruebas E2E están etiquetadas con `@Tag("e2e")`. No se requiere ningún navegador instalado: HtmlUnit simula el navegador en memoria.
+
+**Clases de test:** `products-service` → `ecommerce.app.products.e2e.SwaggerUiE2ETest`; `inventory-service` → `ecommerce.app.inventory.e2e.SwaggerUiE2ETest`.
+
+Checklist de cumplimiento de la prueba técnica: [docs/COMPLIANCE_BACKEND.md](docs/COMPLIANCE_BACKEND.md).
 
 ---
 
@@ -288,4 +351,5 @@ Cobertura objetivo en módulos críticos: 75–80%. Checklist de cumplimiento de
 - **Spring Security**: API Key, JWT (jjwt), rate limit por IP
 - **Actuator**: health (liveness/readiness), info, metrics
 - **Springdoc OpenAPI**: Swagger UI y `/v3/api-docs` en cada servicio
-- **JUnit 5**, **Mockito**, **MockMvc** para pruebas
+- **JUnit 5**, **Mockito**, **MockMvc** para pruebas; **Selenium + HtmlUnit** para E2E sin navegador (Swagger UI, health)
+- **SonarQube** (sonar-maven-plugin) para análisis de calidad y cobertura

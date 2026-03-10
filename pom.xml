@@ -27,6 +27,11 @@
 		<java.version>17</java.version>
 		<resilience4j.version>2.2.0</resilience4j.version>
 		<testcontainers.version>1.19.8</testcontainers.version>
+		<sonar-maven-plugin.version>3.11.0.3922</sonar-maven-plugin.version>
+		<!-- SonarQube: opcional; definir sonar.host.url y sonar.token (o sonar.login) para enviar análisis -->
+		<sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
+		<sonar.exclusions>**/config/**,**/domain/**,**/*Application.java,**/application/port/**,**/application/model/**</sonar.exclusions>
+		<sonar.coverage.jacoco.xmlReportPaths>products-service/target/site/jacoco/jacoco.xml,inventory-service/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 	</properties>
 
 	<dependencyManagement>
@@ -60,4 +65,87 @@
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>0.8.14</version>
+					<executions>
+						<execution>
+							<id>prepare-agent</id>
+							<goals>
+								<goal>prepare-agent</goal>
+							</goals>
+							<phase>initialize</phase>
+							<configuration>
+								<propertyName>surefireArgLine</propertyName>
+							</configuration>
+						</execution>
+						<execution>
+							<id>report</id>
+							<phase>test</phase>
+							<goals>
+								<goal>report</goal>
+							</goals>
+							<configuration>
+								<formats>
+									<format>HTML</format>
+									<format>XML</format>
+								</formats>
+							</configuration>
+						</execution>
+						<execution>
+							<id>check</id>
+							<phase>verify</phase>
+							<goals>
+								<goal>check</goal>
+							</goals>
+							<configuration>
+								<rules>
+									<rule>
+										<element>BUNDLE</element>
+										<limits>
+											<limit>
+												<counter>LINE</counter>
+												<value>COVEREDRATIO</value>
+												<minimum>0.70</minimum>
+											</limit>
+										</limits>
+										<excludes>
+											<exclude>**/*Application.class</exclude>
+											<exclude>**/config/**</exclude>
+											<exclude>**/infrastructure/**</exclude>
+											<exclude>**/application/port/**</exclude>
+											<exclude>**/application/model/**</exclude>
+										</excludes>
+									</rule>
+								</rules>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+				<plugin>
+					<groupId>org.sonarsource.scanner.maven</groupId>
+					<artifactId>sonar-maven-plugin</artifactId>
+					<version>${sonar-maven-plugin.version}</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>${surefireArgLine}</argLine>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
 </project>

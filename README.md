@@ -200,6 +200,23 @@ La cobertura se genera con **JaCoCo** en cada ejecución de tests. **Objetivo: 7
 
    Abre el `index.html` en el navegador para ver líneas cubiertas, ramas y resumen por paquete.
 
+#### Resultados de cobertura (evidencia)
+
+Los módulos críticos (**application.service** e **infrastructure.web**) alcanzan o superan el objetivo del 75–80%:
+
+| Servicio           | Instrucciones (total) | Ramas (total) | application.service | infrastructure.web      |
+| ------------------ | ---------------------- | ------------- | -------------------- | ----------------------- |
+| **products-service** | 90%                    | 70%           | 100% instrucciones y ramas | 92% instrucciones, 76% ramas |
+| **inventory-service** | 86%                  | 68%           | 95% instrucciones, 88% ramas | 93% instrucciones, 78% ramas |
+
+**products-service** (JaCoCo):
+
+![Cobertura JaCoCo products-service](Screenshot%20from%202026-03-10%2021-01-43.png)
+
+**inventory-service** (JaCoCo):
+
+![Cobertura JaCoCo inventory-service](Screenshot%20from%202026-03-10%2021-01-31.png)
+
 Se excluyen del mínimo de cobertura: clase principal (`*Application`), paquetes `config`, DTOs y modelos de request/response, para centrar el objetivo en servicios, dominio, controladores y adaptadores.
 
 ---

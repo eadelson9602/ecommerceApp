@@ -1,7 +1,6 @@
 package ecommerce.app.inventory.infrastructure.client;
 
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
@@ -19,8 +18,9 @@ class ProductsServiceAdapterTest {
 		UUID productId = UUID.randomUUID();
 		Exception ex = new RuntimeException("cause");
 		ProductsServiceAdapter adapter = new ProductsServiceAdapter(null); // fallback no usa client
+		var mono = adapter.getProductExistsFallback(productId, ex);
 
-		assertThatThrownBy(() -> adapter.getProductExistsFallback(productId, ex).block())
+		assertThatThrownBy(mono::block)
 				.isInstanceOf(ProductsServiceUnavailableException.class)
 				.hasMessageContaining("unavailable");
 	}

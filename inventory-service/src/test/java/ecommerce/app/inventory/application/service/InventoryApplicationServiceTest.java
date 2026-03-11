@@ -27,6 +27,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.persistence.OptimisticLockException;
+
 @ExtendWith(MockitoExtension.class)
 class InventoryApplicationServiceTest {
 
@@ -200,5 +202,22 @@ class InventoryApplicationServiceTest {
 		assertThat(saved.getProductId()).isEqualTo(PRODUCT_ID);
 		assertThat(saved.getQuantity()).isEqualTo(3);
 		assertThat(saved.getProcessedAt()).isNotNull();
+	}
+
+	@Test
+	void processPurchase_whenOptimisticLockException_returnsConflict() {
+		Inventory inv = new Inventory();
+		inv.setProductId(PRODUCT_ID);
+		inv.setAvailable(10);
+		inv.setReserved(0);
+		inv.setVersion(0L);
+		when(productsServicePort.getProductExists(PRODUCT_ID)).thenReturn(Mono.just(PRODUCT_ID));
+		when(inventoryRepository.findByProductIdForUpdate(PRODUCT_ID)).thenReturn(Optional.of(inv));
+		when(inventoryRepository.saveAndFlush(any(Inventory.class))).thenThrow(new OptimisticLockException());
+
+		PurchaseResult result = service.processPurchase(PRODUCT_ID, 3, null);
+
+		assertThat(result.getType()).isEqualTo(PurchaseResult.Type.CONFLICT);
+		assertThat(result.getErrorDetail()).contains("Concurrencia");
 	}
 }

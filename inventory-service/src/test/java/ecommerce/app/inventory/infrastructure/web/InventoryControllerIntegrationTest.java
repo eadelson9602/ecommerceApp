@@ -114,6 +114,21 @@ class InventoryControllerIntegrationTest {
 
 	@Test
 	@WithMockUser
+	void setInventory_withDataAttributes_usesNestedAvailable() throws Exception {
+		UUID productId = UUID.randomUUID();
+		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
+
+		String putBody = "{\"data\":{\"type\":\"inventory\",\"attributes\":{\"available\":5}}}";
+		mockMvc.perform(put("/api/v1/inventory/" + productId)
+						.contentType(JSON_API)
+						.accept(JSON_API)
+						.content(putBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.attributes.available").value(5));
+	}
+
+	@Test
+	@WithMockUser
 	void purchase_whenProductExistsAndStockSufficient_returns201() throws Exception {
 		UUID productId = UUID.randomUUID();
 		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
@@ -265,6 +280,40 @@ class InventoryControllerIntegrationTest {
 				.andExpect(content().contentTypeCompatibleWith(JSON_API))
 				.andExpect(jsonPath("$.data").isArray())
 				.andExpect(jsonPath("$.meta.totalRecords").exists());
+	}
+
+	@Test
+	@WithMockUser
+	void listPurchases_withPagination_returnsLinksPrevNext() throws Exception {
+		// Crear al menos 3 compras para que página 2 con size=1 tenga prev y next
+		UUID productId = UUID.randomUUID();
+		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
+		mockMvc.perform(put("/api/v1/inventory/" + productId)
+						.contentType(JSON_API)
+						.accept(JSON_API)
+						.content("{\"available\": 100}"))
+				.andExpect(status().isOk());
+		String purchaseBody = """
+				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":1}}}
+				""".formatted(productId);
+		for (int i = 0; i < 3; i++) {
+			mockMvc.perform(post("/api/v1/purchases")
+							.header(InventoryController.IDEMPOTENCY_KEY_HEADER, "idem-pagination-" + i)
+							.contentType(JSON_API)
+							.accept(JSON_API)
+							.content(purchaseBody))
+					.andExpect(status().isCreated());
+		}
+		// Página 2 de 3 (size=1) debe tener first, last, prev y next
+		mockMvc.perform(get("/api/v1/purchases")
+						.param("page[number]", "2")
+						.param("page[size]", "1")
+						.accept(JSON_API))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.links.first").exists())
+				.andExpect(jsonPath("$.links.last").exists())
+				.andExpect(jsonPath("$.links.prev").exists())
+				.andExpect(jsonPath("$.links.next").exists());
 	}
 
 	@Test

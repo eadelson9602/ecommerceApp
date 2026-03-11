@@ -82,7 +82,7 @@ class ProductsServiceClientTest {
 		UUID productId = UUID.randomUUID();
 		server.enqueue(new MockResponse().setResponseCode(500).setBody("Internal Error"));
 
-		assertThatThrownBy(() -> client.getProductExists(productId).block())
+		assertThatThrownBy(() -> blockGetProductExists(client, productId))
 				.isInstanceOf(ProductsServiceUnavailableException.class)
 				.hasMessageContaining("Products service unavailable");
 	}
@@ -101,7 +101,11 @@ class ProductsServiceClientTest {
 				100
 		);
 
-		assertThatThrownBy(() -> shortTimeoutClient.getProductExists(productId).block())
+		assertThatThrownBy(() -> blockGetProductExists(shortTimeoutClient, productId))
 				.isInstanceOf(ProductsServiceUnavailableException.class);
+	}
+
+	private static UUID blockGetProductExists(ProductsServiceClient client, UUID productId) {
+		return client.getProductExists(productId).block();
 	}
 }

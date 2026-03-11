@@ -206,8 +206,8 @@ Los módulos críticos (**application.service** e **infrastructure.web**) alcanz
 
 | Servicio           | Instrucciones (total) | Ramas (total) | application.service | infrastructure.web      |
 | ------------------ | ---------------------- | ------------- | -------------------- | ----------------------- |
-| **products-service** | 90%                    | 70%           | 100% instrucciones y ramas | 92% instrucciones, 76% ramas |
-| **inventory-service** | 86%                  | 68%           | 95% instrucciones, 88% ramas | 93% instrucciones, 78% ramas |
+| **products-service** | 91%                    | 70%           | 100% instrucciones y ramas | 94% instrucciones, 78% ramas |
+| **inventory-service** | 89%                  | 72%           | 99% instrucciones, 88% ramas | 96% instrucciones, 82% ramas |
 
 **products-service** (JaCoCo):
 

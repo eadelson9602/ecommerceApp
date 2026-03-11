@@ -211,11 +211,11 @@ Los módulos críticos (**application.service** e **infrastructure.web**) alcanz
 
 **products-service** (JaCoCo):
 
-![Cobertura JaCoCo products-service](Screenshot%20from%202026-03-10%2021-01-43.png)
+![Cobertura JaCoCo products-service](test_product.png)
 
 **inventory-service** (JaCoCo):
 
-![Cobertura JaCoCo inventory-service](Screenshot%20from%202026-03-10%2021-01-31.png)
+![Cobertura JaCoCo inventory-service](test_inventory.png)
 
 Se excluyen del mínimo de cobertura: clase principal (`*Application`), paquetes `config`, DTOs y modelos de request/response, para centrar el objetivo en servicios, dominio, controladores y adaptadores.
 

@@ -1,6 +1,7 @@
 package ecommerce.app.inventory.infrastructure.web;
 
 import ecommerce.app.inventory.application.port.in.GetInventoryUseCase;
+import ecommerce.app.inventory.application.port.in.ListPurchasesUseCase;
 import ecommerce.app.inventory.application.port.in.ProcessPurchaseUseCase;
 import ecommerce.app.inventory.application.port.in.SetInventoryUseCase;
 import ecommerce.app.inventory.application.port.out.IdempotencyRecordPort;
@@ -39,6 +40,8 @@ class InventoryControllerWebMvcTest {
 	private ProcessPurchaseUseCase processPurchaseUseCase;
 	@MockBean
 	private SetInventoryUseCase setInventoryUseCase;
+	@MockBean
+	private ListPurchasesUseCase listPurchasesUseCase;
 	@MockBean
 	private IdempotencyRecordPort idempotencyRecordPort;
 

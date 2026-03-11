@@ -255,4 +255,23 @@ class InventoryControllerIntegrationTest {
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(jsonPath("$.errors[0].code").value("INSUFFICIENT_STOCK"));
 	}
+
+	@Test
+	@WithMockUser
+	void listPurchases_returns200WithDataAndMeta() throws Exception {
+		mockMvc.perform(get("/api/purchases")
+						.param("page[number]", "1")
+						.param("page[size]", "10")
+						.accept(JSON_API))
+				.andExpect(status().isOk())
+				.andExpect(content().contentTypeCompatibleWith(JSON_API))
+				.andExpect(jsonPath("$.data").isArray())
+				.andExpect(jsonPath("$.meta.totalRecords").exists());
+	}
+
+	@Test
+	void listPurchases_withoutAuth_returns4xx() throws Exception {
+		mockMvc.perform(get("/api/purchases").accept(JSON_API))
+				.andExpect(status().is4xxClientError());
+	}
 }

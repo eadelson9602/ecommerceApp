@@ -3,6 +3,7 @@ package ecommerce.app.inventory.infrastructure.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ecommerce.app.jsonapi.JsonApiDocument;
 import ecommerce.app.jsonapi.JsonApiError;
+import ecommerce.app.jsonapi.JsonApiLinks;
 import ecommerce.app.inventory.application.model.GetInventoryResult;
 import ecommerce.app.inventory.application.model.PurchaseResult;
 import ecommerce.app.inventory.application.model.PurchaseResult.Type;
@@ -28,14 +29,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Adaptador HTTP: inventario y compras en formato JSON:API.
- * Documentación interactiva: Swagger UI (/swagger-ui.html).
- */
 @Tag(name = "Inventory", description = "Consultar y actualizar inventario por producto")
 @Tag(name = "Purchases", description = "Registrar compras (idempotentes con Idempotency-Key)")
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1")
 public class InventoryController {
 
 	public static final String JSON_API_MEDIA_TYPE = "application/vnd.api+json";
@@ -72,8 +69,16 @@ public class InventoryController {
 			@Parameter(description = "Tamaño de página (máx 100)") @RequestParam(name = "page[size]", defaultValue = "20") int pageSize) {
 		Page<ecommerce.app.inventory.domain.Purchase> page = listPurchasesUseCase.list(pageNumber, pageSize);
 		List<PurchaseResource> data = page.getContent().stream().map(PurchaseResource::from).toList();
+		String base = "/api/v1/purchases?page[number]=%d&page[size]=%d";
+		JsonApiLinks links = JsonApiLinks.builder()
+				.first(String.format(base, 1, pageSize))
+				.last(String.format(base, page.getTotalPages(), pageSize))
+				.prev(page.hasPrevious() ? String.format(base, page.getNumber(), pageSize) : null)
+				.next(page.hasNext() ? String.format(base, page.getNumber() + 2, pageSize) : null)
+				.build();
 		JsonApiDocument<?> doc = JsonApiDocument.<List<PurchaseResource>>builder()
 				.data(data)
+				.links(links)
 				.meta(Map.of("totalRecords", page.getTotalElements()))
 				.build();
 		return ResponseEntity.ok(doc);
@@ -107,13 +112,8 @@ public class InventoryController {
 	@PutMapping(value = "/inventory/{productId}", consumes = JSON_API_MEDIA_TYPE, produces = JSON_API_MEDIA_TYPE)
 	public ResponseEntity<JsonApiDocument<?>> setInventory(
 			@Parameter(description = "UUID del producto") @PathVariable UUID productId,
-			@RequestBody java.util.Map<String, Object> body) {
-		Object availableObj = body != null && body.containsKey("available") ? body.get("available") : null;
-		int available = availableObj instanceof Number ? ((Number) availableObj).intValue() : 0;
-		if (available < 0) {
-			return ResponseEntity.badRequest()
-					.body(errorDocument("422", "VALIDATION_FAILED", "available must be >= 0", null));
-		}
+			@Valid @RequestBody SetInventoryRequest request) {
+		int available = request != null ? request.getAvailableValue() : 0;
 		var inventory = setInventoryUseCase.setOrUpdateInventory(productId, available);
 		return ResponseEntity.ok(JsonApiDocument.builder().data(InventoryResource.from(inventory)).build());
 	}

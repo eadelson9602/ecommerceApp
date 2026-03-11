@@ -22,9 +22,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * Tests aislados del controlador para cubrir ramas que requieren mocks (CONFLICT, IDEMPOTENT_RESPONSE con JSON inválido).
- */
 @WebMvcTest(InventoryController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class InventoryControllerWebMvcTest {
@@ -56,7 +53,7 @@ class InventoryControllerWebMvcTest {
 				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":1}}}
 				""".formatted(productId);
 
-		mockMvc.perform(post("/api/purchases")
+		mockMvc.perform(post("/api/v1/purchases")
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content(body))
@@ -78,7 +75,7 @@ class InventoryControllerWebMvcTest {
 				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":1}}}
 				""".formatted(productId);
 
-		mockMvc.perform(post("/api/purchases")
+		mockMvc.perform(post("/api/v1/purchases")
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content(body))

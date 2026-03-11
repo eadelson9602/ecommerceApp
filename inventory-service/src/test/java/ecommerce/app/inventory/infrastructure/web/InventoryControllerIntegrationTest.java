@@ -18,9 +18,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * Integración con la API (perfil test usa H2). ProductsServicePort se mockea para no llamar al servicio externo.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -36,7 +33,7 @@ class InventoryControllerIntegrationTest {
 
 	@Test
 	void getInventory_withoutAuth_returns4xx() throws Exception {
-		mockMvc.perform(get("/api/inventory/" + UUID.randomUUID())
+		mockMvc.perform(get("/api/v1/inventory/" + UUID.randomUUID())
 						.accept(JSON_API))
 				.andExpect(status().is4xxClientError()); // 401 o 403 según configuración
 	}
@@ -47,7 +44,7 @@ class InventoryControllerIntegrationTest {
 		UUID productId = UUID.randomUUID();
 		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.empty());
 
-		mockMvc.perform(get("/api/inventory/" + productId)
+		mockMvc.perform(get("/api/v1/inventory/" + productId)
 						.accept(JSON_API))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentTypeCompatibleWith(JSON_API))
@@ -60,7 +57,7 @@ class InventoryControllerIntegrationTest {
 		UUID productId = UUID.randomUUID();
 		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
 
-		mockMvc.perform(get("/api/inventory/" + productId)
+		mockMvc.perform(get("/api/v1/inventory/" + productId)
 						.accept(JSON_API))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentTypeCompatibleWith(JSON_API))
@@ -74,14 +71,14 @@ class InventoryControllerIntegrationTest {
 		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
 
 		String putBody = "{\"available\": 100}";
-		mockMvc.perform(put("/api/inventory/" + productId)
+		mockMvc.perform(put("/api/v1/inventory/" + productId)
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content(putBody))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.attributes.available").value(100));
 
-		mockMvc.perform(get("/api/inventory/" + productId)
+		mockMvc.perform(get("/api/v1/inventory/" + productId)
 						.accept(JSON_API))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.attributes.available").value(100));
@@ -93,7 +90,7 @@ class InventoryControllerIntegrationTest {
 		UUID productId = UUID.randomUUID();
 		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
 
-		mockMvc.perform(put("/api/inventory/" + productId)
+		mockMvc.perform(put("/api/v1/inventory/" + productId)
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content("{}"))
@@ -103,15 +100,15 @@ class InventoryControllerIntegrationTest {
 
 	@Test
 	@WithMockUser
-	void setInventory_withNegativeAvailable_returns400() throws Exception {
+	void setInventory_withNegativeAvailable_returns422() throws Exception {
 		UUID productId = UUID.randomUUID();
 		String putBody = "{\"available\": -1}";
 
-		mockMvc.perform(put("/api/inventory/" + productId)
+		mockMvc.perform(put("/api/v1/inventory/" + productId)
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content(putBody))
-				.andExpect(status().isBadRequest())
+				.andExpect(status().isUnprocessableEntity())
 				.andExpect(jsonPath("$.errors[0].code").value("VALIDATION_FAILED"));
 	}
 
@@ -122,7 +119,7 @@ class InventoryControllerIntegrationTest {
 		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
 
 		// Crear inventario
-		mockMvc.perform(put("/api/inventory/" + productId)
+		mockMvc.perform(put("/api/v1/inventory/" + productId)
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content("{\"available\": 20}"))
@@ -132,7 +129,7 @@ class InventoryControllerIntegrationTest {
 				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":5}}}
 				""".formatted(productId);
 
-		mockMvc.perform(post("/api/purchases")
+		mockMvc.perform(post("/api/v1/purchases")
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content(purchaseBody))
@@ -141,7 +138,7 @@ class InventoryControllerIntegrationTest {
 				.andExpect(jsonPath("$.data.attributes.productId").value(productId.toString()));
 
 		// Stock restante 15
-		mockMvc.perform(get("/api/inventory/" + productId).accept(JSON_API))
+		mockMvc.perform(get("/api/v1/inventory/" + productId).accept(JSON_API))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.attributes.available").value(15));
 	}
@@ -152,7 +149,7 @@ class InventoryControllerIntegrationTest {
 		UUID productId = UUID.randomUUID();
 		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
 
-		mockMvc.perform(put("/api/inventory/" + productId)
+		mockMvc.perform(put("/api/v1/inventory/" + productId)
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content("{\"available\": 10}"))
@@ -162,7 +159,7 @@ class InventoryControllerIntegrationTest {
 				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":2}}}
 				""".formatted(productId);
 
-		mockMvc.perform(post("/api/purchases")
+		mockMvc.perform(post("/api/v1/purchases")
 						.header(InventoryController.IDEMPOTENCY_KEY_HEADER, "idem-key-123")
 						.contentType(JSON_API)
 						.accept(JSON_API)
@@ -170,7 +167,7 @@ class InventoryControllerIntegrationTest {
 				.andExpect(status().isCreated());
 
 		// Segunda petición con la misma clave: misma respuesta, stock no se descuenta dos veces
-		mockMvc.perform(post("/api/purchases")
+		mockMvc.perform(post("/api/v1/purchases")
 						.header(InventoryController.IDEMPOTENCY_KEY_HEADER, "idem-key-123")
 						.contentType(JSON_API)
 						.accept(JSON_API)
@@ -178,21 +175,22 @@ class InventoryControllerIntegrationTest {
 				.andExpect(status().isCreated());
 
 		// Stock sigue en 8 (solo se descontó una vez)
-		mockMvc.perform(get("/api/inventory/" + productId).accept(JSON_API))
+		mockMvc.perform(get("/api/v1/inventory/" + productId).accept(JSON_API))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.attributes.available").value(8));
 	}
 
 	@Test
 	@WithMockUser
-	void purchase_withoutProductId_returns400() throws Exception {
+	void purchase_withoutProductId_returns422() throws Exception {
 		String body = "{\"data\":{\"type\":\"purchases\",\"attributes\":{\"quantity\":1}}}";
 
-		mockMvc.perform(post("/api/purchases")
+		mockMvc.perform(post("/api/v1/purchases")
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content(body))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isUnprocessableEntity())
+				.andExpect(jsonPath("$.errors[0].code").value("VALIDATION_FAILED"));
 	}
 
 	@Test
@@ -205,7 +203,7 @@ class InventoryControllerIntegrationTest {
 				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":1}}}
 				""".formatted(productId);
 
-		mockMvc.perform(post("/api/purchases")
+		mockMvc.perform(post("/api/v1/purchases")
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content(purchaseBody))
@@ -224,7 +222,7 @@ class InventoryControllerIntegrationTest {
 				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":1}}}
 				""".formatted(productId);
 
-		mockMvc.perform(post("/api/purchases")
+		mockMvc.perform(post("/api/v1/purchases")
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content(purchaseBody))
@@ -238,7 +236,7 @@ class InventoryControllerIntegrationTest {
 		UUID productId = UUID.randomUUID();
 		when(productsServicePort.getProductExists(any(UUID.class))).thenReturn(Mono.just(productId));
 
-		mockMvc.perform(put("/api/inventory/" + productId)
+		mockMvc.perform(put("/api/v1/inventory/" + productId)
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content("{\"available\": 2}"))
@@ -248,7 +246,7 @@ class InventoryControllerIntegrationTest {
 				{"data":{"type":"purchases","attributes":{"productId":"%s","quantity":5}}}
 				""".formatted(productId);
 
-		mockMvc.perform(post("/api/purchases")
+		mockMvc.perform(post("/api/v1/purchases")
 						.contentType(JSON_API)
 						.accept(JSON_API)
 						.content(purchaseBody))
@@ -259,7 +257,7 @@ class InventoryControllerIntegrationTest {
 	@Test
 	@WithMockUser
 	void listPurchases_returns200WithDataAndMeta() throws Exception {
-		mockMvc.perform(get("/api/purchases")
+		mockMvc.perform(get("/api/v1/purchases")
 						.param("page[number]", "1")
 						.param("page[size]", "10")
 						.accept(JSON_API))
@@ -271,7 +269,7 @@ class InventoryControllerIntegrationTest {
 
 	@Test
 	void listPurchases_withoutAuth_returns4xx() throws Exception {
-		mockMvc.perform(get("/api/purchases").accept(JSON_API))
+		mockMvc.perform(get("/api/v1/purchases").accept(JSON_API))
 				.andExpect(status().is4xxClientError());
 	}
 }

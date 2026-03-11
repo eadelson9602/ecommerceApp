@@ -9,7 +9,6 @@ import ecommerce.app.products.application.model.UpdateProductCommand;
 import ecommerce.app.products.application.port.in.*;
 import ecommerce.app.products.domain.Product;
 import ecommerce.app.products.domain.ProductStatus;
-import ecommerce.app.products.domain.SkuAlreadyExistsException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -30,7 +29,7 @@ import java.util.UUID;
  */
 @Tag(name = "Products", description = "CRUD de productos y listado con paginación, filtros y ordenación")
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/v1/products")
 public class ProductController {
 
 	public static final String JSON_API_MEDIA_TYPE = "application/vnd.api+json";
@@ -76,7 +75,7 @@ public class ProductController {
 				.map(ProductStatus::valueOf);
 		ProductFilter filter = new ProductFilter(statusOpt, Optional.ofNullable(search));
 		var page = listProductsUseCase.list(filter, pageNumber, pageSize, sort);
-		String base = "/api/products?page[number]=%d&page[size]=%d";
+		String base = "/api/v1/products?page[number]=%d&page[size]=%d";
 		if (status != null) base += "&status=" + status;
 		if (search != null) base += "&filter[search]=" + search;
 		if (sort != null) base += "&sort=" + sort;
@@ -120,18 +119,14 @@ public class ProductController {
 		if (req == null) {
 			return ResponseEntity.badRequest().body(errorDocument("422", "VALIDATION_FAILED", "Unprocessable Entity", "data.attributes is required"));
 		}
-		try {
-			CreateProductCommand command = new CreateProductCommand(
-					req.getSku().trim(),
-					req.getName().trim(),
-					req.getPrice(),
-					ProductStatus.valueOf(req.getStatus())
-			);
-			Product created = createProductUseCase.create(command);
-			return ResponseEntity.status(HttpStatus.CREATED).body(JsonApiDocument.builder().data(ProductResource.from(created)).build());
-		} catch (SkuAlreadyExistsException e) {
-			return ResponseEntity.status(HttpStatus.CONFLICT).body(errorDocument("409", "SKU_ALREADY_EXISTS", "Conflict", "Ya existe un producto con el SKU indicado."));
-		}
+		CreateProductCommand command = new CreateProductCommand(
+				req.getSku().trim(),
+				req.getName().trim(),
+				req.getPrice(),
+				ProductStatus.valueOf(req.getStatus())
+		);
+		Product created = createProductUseCase.create(command);
+		return ResponseEntity.status(HttpStatus.CREATED).body(JsonApiDocument.builder().data(ProductResource.from(created)).build());
 	}
 
 	@Operation(summary = "Actualizar producto", description = "Actualiza un producto existente por UUID. SKU único; 409 si se duplica.")
@@ -150,19 +145,15 @@ public class ProductController {
 		if (req == null) {
 			return ResponseEntity.badRequest().body(errorDocument("422", "VALIDATION_FAILED", "Unprocessable Entity", "data.attributes is required"));
 		}
-		try {
-			UpdateProductCommand command = new UpdateProductCommand(
-					req.getSku().trim(),
-					req.getName().trim(),
-					req.getPrice(),
-					ProductStatus.valueOf(req.getStatus())
-			);
-			return updateProductUseCase.update(id, command)
-					.map(product -> ResponseEntity.<JsonApiDocument<?>>ok(JsonApiDocument.builder().data(ProductResource.from(product)).build()))
-					.orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", "NOT_FOUND", "Resource not found", "Product not found for id: " + id)));
-		} catch (SkuAlreadyExistsException e) {
-			return ResponseEntity.status(HttpStatus.CONFLICT).body(errorDocument("409", "SKU_ALREADY_EXISTS", "Conflict", "Ya existe un producto con el SKU indicado."));
-		}
+		UpdateProductCommand command = new UpdateProductCommand(
+				req.getSku().trim(),
+				req.getName().trim(),
+				req.getPrice(),
+				ProductStatus.valueOf(req.getStatus())
+		);
+		return updateProductUseCase.update(id, command)
+				.map(product -> ResponseEntity.<JsonApiDocument<?>>ok(JsonApiDocument.builder().data(ProductResource.from(product)).build()))
+				.orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDocument("404", "NOT_FOUND", "Resource not found", "Product not found for id: " + id)));
 	}
 
 	@Operation(summary = "Eliminar producto", description = "Elimina un producto por UUID. Respuesta 204 sin cuerpo.")

@@ -10,10 +10,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * Integración con la API (perfil test usa H2). Con Docker disponible, ejecutar
- * también ProductControllerTestcontainersIT (tag testcontainers).
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -24,7 +20,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void listProducts_withApiKey_returns200() throws Exception {
-		mockMvc.perform(get("/api/products")
+		mockMvc.perform(get("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.accept("application/vnd.api+json"))
 				.andExpect(status().isOk())
@@ -37,7 +33,7 @@ class ProductControllerIntegrationTest {
 		String body = """
 				{"data":{"type":"products","attributes":{"sku":"IT-SKU-001","name":"Test Product","price":9.99,"status":"ACTIVE"}}}
 				""";
-		mockMvc.perform(post("/api/products")
+		mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -48,13 +44,13 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void listProducts_withoutAuth_returns4xx() throws Exception {
-		mockMvc.perform(get("/api/products").accept("application/vnd.api+json"))
+		mockMvc.perform(get("/api/v1/products").accept("application/vnd.api+json"))
 				.andExpect(status().is4xxClientError()); // 401 o 403 según configuración
 	}
 
 	@Test
 	void getProductById_withApiKey_returns200Or404() throws Exception {
-		String location = mockMvc.perform(post("/api/products")
+		String location = mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -63,7 +59,7 @@ class ProductControllerIntegrationTest {
 				.andReturn().getResponse().getHeader("Location");
 		String id = location != null && location.contains("/") ? location.substring(location.lastIndexOf("/") + 1) : null;
 		if (id != null) {
-			mockMvc.perform(get("/api/products/" + id)
+			mockMvc.perform(get("/api/v1/products/" + id)
 							.header("X-API-Key", "internal-api-key-change-in-prod")
 							.accept("application/vnd.api+json"))
 					.andExpect(status().isOk())
@@ -73,7 +69,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void patchProduct_withApiKey_returns200() throws Exception {
-		String location = mockMvc.perform(post("/api/products")
+		String location = mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -82,7 +78,7 @@ class ProductControllerIntegrationTest {
 				.andReturn().getResponse().getHeader("Location");
 		String id = location != null && location.contains("/") ? location.substring(location.lastIndexOf("/") + 1) : null;
 		if (id != null) {
-			mockMvc.perform(patch("/api/products/" + id)
+			mockMvc.perform(patch("/api/v1/products/" + id)
 							.header("X-API-Key", "internal-api-key-change-in-prod")
 							.contentType("application/vnd.api+json")
 							.accept("application/vnd.api+json")
@@ -94,7 +90,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void getProductById_notFound_returns404() throws Exception {
-		mockMvc.perform(get("/api/products/00000000-0000-0000-0000-000000000000")
+		mockMvc.perform(get("/api/v1/products/00000000-0000-0000-0000-000000000000")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.accept("application/vnd.api+json"))
 				.andExpect(status().isNotFound());
@@ -103,13 +99,13 @@ class ProductControllerIntegrationTest {
 	@Test
 	void createProduct_duplicateSku_returns409() throws Exception {
 		String body = "{\"data\":{\"type\":\"products\",\"attributes\":{\"sku\":\"IT-SKU-DUP\",\"name\":\"First\",\"price\":1.0,\"status\":\"ACTIVE\"}}}";
-		mockMvc.perform(post("/api/products")
+		mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
 						.content(body))
 				.andExpect(status().isCreated());
-		mockMvc.perform(post("/api/products")
+		mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -119,7 +115,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void deleteProduct_withApiKey_returns204Or404() throws Exception {
-		String location = mockMvc.perform(post("/api/products")
+		String location = mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -128,7 +124,7 @@ class ProductControllerIntegrationTest {
 				.andReturn().getResponse().getHeader("Location");
 		String id = location != null && location.contains("/") ? location.substring(location.lastIndexOf("/") + 1) : null;
 		if (id != null) {
-			mockMvc.perform(delete("/api/products/" + id)
+			mockMvc.perform(delete("/api/v1/products/" + id)
 							.header("X-API-Key", "internal-api-key-change-in-prod"))
 					.andExpect(status().isNoContent());
 		}
@@ -138,7 +134,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void createProduct_withoutAttributes_returns422() throws Exception {
-		mockMvc.perform(post("/api/products")
+		mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -149,7 +145,7 @@ class ProductControllerIntegrationTest {
 	@Test
 	void createProduct_invalidStatus_returns400() throws Exception {
 		String body = "{\"data\":{\"type\":\"products\",\"attributes\":{\"sku\":\"IT-SKU-INV\",\"name\":\"Inv\",\"price\":1.0,\"status\":\"INVALID\"}}}";
-		mockMvc.perform(post("/api/products")
+		mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -159,7 +155,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void patchProduct_notFound_returns404() throws Exception {
-		mockMvc.perform(patch("/api/products/00000000-0000-0000-0000-000000000099")
+		mockMvc.perform(patch("/api/v1/products/00000000-0000-0000-0000-000000000099")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -169,14 +165,14 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void deleteProduct_notFound_returns404() throws Exception {
-		mockMvc.perform(delete("/api/products/00000000-0000-0000-0000-000000000099")
+		mockMvc.perform(delete("/api/v1/products/00000000-0000-0000-0000-000000000099")
 						.header("X-API-Key", "internal-api-key-change-in-prod"))
 				.andExpect(status().isNotFound());
 	}
 
 	@Test
 	void listProducts_withSortAndFilter_returns200() throws Exception {
-		mockMvc.perform(get("/api/products")
+		mockMvc.perform(get("/api/v1/products")
 						.param("page[number]", "1")
 						.param("page[size]", "5")
 						.param("status", "ACTIVE")
@@ -201,7 +197,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void listProducts_withFilterSearch_returns200() throws Exception {
-		mockMvc.perform(get("/api/products")
+		mockMvc.perform(get("/api/v1/products")
 						.param("page[number]", "1")
 						.param("page[size]", "10")
 						.param("filter[search]", "IT-SKU")
@@ -214,7 +210,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void listProducts_statusInactive_returns200() throws Exception {
-		mockMvc.perform(get("/api/products")
+		mockMvc.perform(get("/api/v1/products")
 						.param("page[number]", "1")
 						.param("page[size]", "5")
 						.param("status", "INACTIVE")
@@ -230,14 +226,14 @@ class ProductControllerIntegrationTest {
 		for (int i = 0; i < 5; i++) {
 			String body = String.format(
 					"{\"data\":{\"type\":\"products\",\"attributes\":{\"sku\":\"IT-PAG-%d\",\"name\":\"Pag%d\",\"price\":1.0,\"status\":\"ACTIVE\"}}}", i, i);
-			mockMvc.perform(post("/api/products")
+			mockMvc.perform(post("/api/v1/products")
 							.header("X-API-Key", "internal-api-key-change-in-prod")
 							.contentType("application/vnd.api+json")
 							.accept("application/vnd.api+json")
 							.content(body))
 					.andExpect(status().isCreated());
 		}
-		mockMvc.perform(get("/api/products")
+		mockMvc.perform(get("/api/v1/products")
 						.param("page[number]", "2")
 						.param("page[size]", "2")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
@@ -249,7 +245,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void patchProduct_withoutAttributes_returns422() throws Exception {
-		String location = mockMvc.perform(post("/api/products")
+		String location = mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -258,7 +254,7 @@ class ProductControllerIntegrationTest {
 				.andReturn().getResponse().getHeader("Location");
 		String id = location != null && location.contains("/") ? location.substring(location.lastIndexOf("/") + 1) : null;
 		if (id != null) {
-			mockMvc.perform(patch("/api/products/" + id)
+			mockMvc.perform(patch("/api/v1/products/" + id)
 							.header("X-API-Key", "internal-api-key-change-in-prod")
 							.contentType("application/vnd.api+json")
 							.accept("application/vnd.api+json")
@@ -269,13 +265,13 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void patchProduct_duplicateSku_returns409() throws Exception {
-		mockMvc.perform(post("/api/products")
+		mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
 						.content("{\"data\":{\"type\":\"products\",\"attributes\":{\"sku\":\"IT-SKU-A\",\"name\":\"Product A\",\"price\":1.0,\"status\":\"ACTIVE\"}}}"))
 				.andExpect(status().isCreated());
-		String locationB = mockMvc.perform(post("/api/products")
+		String locationB = mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -284,7 +280,7 @@ class ProductControllerIntegrationTest {
 				.andReturn().getResponse().getHeader("Location");
 		String idB = locationB != null && locationB.contains("/") ? locationB.substring(locationB.lastIndexOf("/") + 1) : null;
 		if (idB != null) {
-			mockMvc.perform(patch("/api/products/" + idB)
+			mockMvc.perform(patch("/api/v1/products/" + idB)
 							.header("X-API-Key", "internal-api-key-change-in-prod")
 							.contentType("application/vnd.api+json")
 							.accept("application/vnd.api+json")
@@ -296,7 +292,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void createProduct_attributesNull_returns400WithErrorDocument() throws Exception {
-		mockMvc.perform(post("/api/products")
+		mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -307,7 +303,7 @@ class ProductControllerIntegrationTest {
 
 	@Test
 	void getById_found_returns200WithData() throws Exception {
-		String location = mockMvc.perform(post("/api/products")
+		String location = mockMvc.perform(post("/api/v1/products")
 						.header("X-API-Key", "internal-api-key-change-in-prod")
 						.contentType("application/vnd.api+json")
 						.accept("application/vnd.api+json")
@@ -316,7 +312,7 @@ class ProductControllerIntegrationTest {
 				.andReturn().getResponse().getHeader("Location");
 		String id = location != null && location.contains("/") ? location.substring(location.lastIndexOf("/") + 1) : null;
 		if (id != null) {
-			mockMvc.perform(get("/api/products/" + id)
+			mockMvc.perform(get("/api/v1/products/" + id)
 							.header("X-API-Key", "internal-api-key-change-in-prod")
 							.accept("application/vnd.api+json"))
 					.andExpect(status().isOk())

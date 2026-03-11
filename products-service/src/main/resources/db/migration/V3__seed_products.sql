@@ -1,8 +1,12 @@
--- Productos básicos iniciales (seed). UUIDs fijos para poder referenciarlos desde inventory-service.
-INSERT INTO products (id, sku, name, price, status, created_at, updated_at) VALUES
-    ('a0000001-0000-0000-0000-000000000001', 'BASIC-001', 'Laptop Básica', 499.9900, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('a0000002-0000-0000-0000-000000000002', 'BASIC-002', 'Mouse Inalámbrico', 19.9900, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('a0000003-0000-0000-0000-000000000003', 'BASIC-003', 'Teclado Estándar', 29.9900, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('a0000004-0000-0000-0000-000000000004', 'BASIC-004', 'Monitor 24"', 179.9900, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('a0000005-0000-0000-0000-000000000005', 'BASIC-005', 'Webcam HD', 39.9900, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+-- Mínimo 500 productos para pruebas (UUIDs deterministas para referenciarlos desde inventory-service).
+INSERT INTO products (id, sku, name, price, status, created_at, updated_at)
+SELECT
+    ('a0000000-0000-0000-0000-' || lpad(to_hex(i), 12, '0'))::uuid,
+    'SKU-' || lpad(i::text, 5, '0'),
+    'Producto ' || i,
+    (10 + (i % 490))::decimal(19, 4),
+    CASE WHEN i % 10 = 0 THEN 'INACTIVE' ELSE 'ACTIVE' END,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM generate_series(1, 500) AS i
 ON CONFLICT (id) DO NOTHING;

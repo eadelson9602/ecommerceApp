@@ -1,0 +1,210 @@
+{
+  "info": {
+    "name": "ecommerceApp Backend",
+    "description": "Products Service (8080) e Inventory Service (8081). JSON:API, JWT o X-API-Key. Usuarios: admin, operator, viewer / password.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "products_base", "value": "http://localhost:8080" },
+    { "key": "inventory_base", "value": "http://localhost:8081" },
+    { "key": "jwt_token", "value": "" },
+    { "key": "product_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.accessToken) { pm.collectionVariables.set('jwt_token', body.accessToken); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password\"\n}"
+            },
+            "url": "{{products_base}}/auth/login",
+            "description": "Obtiene JWT. Usuarios: admin, operator, viewer. Contraseña: password. El token se guarda en variable jwt_token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products Service",
+      "item": [
+        {
+          "name": "List products (paginado)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/vnd.api+json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "url": {
+              "raw": "{{products_base}}/api/products?page[number]=1&page[size]=20",
+              "host": ["{{products_base}}"],
+              "path": ["api", "products"],
+              "query": [
+                { "key": "page[number]", "value": "1" },
+                { "key": "page[size]", "value": "20" },
+                { "key": "status", "value": "ACTIVE", "disabled": true },
+                { "key": "filter[search]", "value": "", "disabled": true },
+                { "key": "sort", "value": "createdAt", "disabled": true }
+              ]
+            },
+            "description": "Paginación: page[number], page[size]. Filtros: status (ACTIVE/INACTIVE), filter[search]. Orden: sort=price, -price, createdAt, -createdAt."
+          }
+        },
+        {
+          "name": "Get product by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/vnd.api+json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "url": "{{products_base}}/api/products/{{product_id}}",
+            "description": "Usar product_id de la lista o de un create."
+          }
+        },
+        {
+          "name": "Create product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.id) { pm.collectionVariables.set('product_id', body.data.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/vnd.api+json" },
+              { "key": "Content-Type", "value": "application/vnd.api+json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": {\n    \"type\": \"products\",\n    \"attributes\": {\n      \"sku\": \"POSTMAN-SKU-001\",\n      \"name\": \"Producto Postman\",\n      \"price\": 19.99,\n      \"status\": \"ACTIVE\"\n    }\n  }\n}"
+            },
+            "url": "{{products_base}}/api/products",
+            "description": "SKU único; si se repite → 409. Crea producto y guarda id en product_id."
+          }
+        },
+        {
+          "name": "Update product (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/vnd.api+json" },
+              { "key": "Content-Type", "value": "application/vnd.api+json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": {\n    \"type\": \"products\",\n    \"attributes\": {\n      \"sku\": \"POSTMAN-SKU-001\",\n      \"name\": \"Producto Postman actualizado\",\n      \"price\": 24.99,\n      \"status\": \"ACTIVE\"\n    }\n  }\n}"
+            },
+            "url": "{{products_base}}/api/products/{{product_id}}"
+          }
+        },
+        {
+          "name": "Delete product",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": "{{products_base}}/api/products/{{product_id}}",
+            "description": "204 sin cuerpo. 404 si no existe."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inventory Service",
+      "item": [
+        {
+          "name": "Get inventory by productId",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/vnd.api+json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "url": "{{inventory_base}}/api/inventory/{{product_id}}",
+            "description": "Valida que el producto exista en Products. 404 si producto o inventario no existe."
+          }
+        },
+        {
+          "name": "Set inventory (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/vnd.api+json" },
+              { "key": "Content-Type", "value": "application/vnd.api+json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"available\": 50\n}"
+            },
+            "url": "{{inventory_base}}/api/inventory/{{product_id}}",
+            "description": "Crea o actualiza available. available >= 0."
+          }
+        },
+        {
+          "name": "Purchase (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/vnd.api+json" },
+              { "key": "Content-Type", "value": "application/vnd.api+json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": {\n    \"type\": \"purchase\",\n    \"attributes\": {\n      \"productId\": \"{{product_id}}\",\n      \"quantity\": 2\n    }\n  }\n}"
+            },
+            "url": "{{inventory_base}}/api/purchases",
+            "description": "productId (UUID) y quantity. Idempotency-Key: mismo valor → misma respuesta sin descontar dos veces. 422 stock insuficiente, 409 concurrencia."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Products health",
+          "request": {
+            "method": "GET",
+            "url": "{{products_base}}/actuator/health"
+          }
+        },
+        {
+          "name": "Inventory health",
+          "request": {
+            "method": "GET",
+            "url": "{{inventory_base}}/actuator/health"
+          }
+        }
+      ]
+    }
+  ]
+}

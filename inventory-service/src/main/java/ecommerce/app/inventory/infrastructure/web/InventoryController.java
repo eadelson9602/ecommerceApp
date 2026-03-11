@@ -7,6 +7,7 @@ import ecommerce.app.inventory.application.model.GetInventoryResult;
 import ecommerce.app.inventory.application.model.PurchaseResult;
 import ecommerce.app.inventory.application.model.PurchaseResult.Type;
 import ecommerce.app.inventory.application.port.in.GetInventoryUseCase;
+import ecommerce.app.inventory.application.port.in.ListPurchasesUseCase;
 import ecommerce.app.inventory.application.port.in.ProcessPurchaseUseCase;
 import ecommerce.app.inventory.application.port.in.SetInventoryUseCase;
 import ecommerce.app.inventory.application.port.out.IdempotencyRecordPort;
@@ -21,9 +22,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Adaptador HTTP: inventario y compras en formato JSON:API.
@@ -41,6 +46,7 @@ public class InventoryController {
 	private final GetInventoryUseCase getInventoryUseCase;
 	private final ProcessPurchaseUseCase processPurchaseUseCase;
 	private final SetInventoryUseCase setInventoryUseCase;
+	private final ListPurchasesUseCase listPurchasesUseCase;
 	private final IdempotencyRecordPort idempotencyRecordPort;
 	private final ObjectMapper objectMapper;
 
@@ -48,13 +54,33 @@ public class InventoryController {
 			GetInventoryUseCase getInventoryUseCase,
 			ProcessPurchaseUseCase processPurchaseUseCase,
 			SetInventoryUseCase setInventoryUseCase,
+			ListPurchasesUseCase listPurchasesUseCase,
 			IdempotencyRecordPort idempotencyRecordPort,
 			ObjectMapper objectMapper) {
 		this.getInventoryUseCase = getInventoryUseCase;
 		this.processPurchaseUseCase = processPurchaseUseCase;
 		this.setInventoryUseCase = setInventoryUseCase;
+		this.listPurchasesUseCase = listPurchasesUseCase;
 		this.idempotencyRecordPort = idempotencyRecordPort;
 		this.objectMapper = objectMapper;
+	}
+
+	@Operation(summary = "Listar compras", description = "Listado paginado de compras realizadas (más recientes primero). Para admin/operator.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Lista de compras"),
+			@ApiResponse(responseCode = "401", description = "No autenticado")
+	})
+	@GetMapping(value = "/purchases", produces = JSON_API_MEDIA_TYPE)
+	public ResponseEntity<JsonApiDocument<?>> listPurchases(
+			@Parameter(description = "Número de página (base 1)") @RequestParam(name = "page[number]", defaultValue = "1") int pageNumber,
+			@Parameter(description = "Tamaño de página (máx 100)") @RequestParam(name = "page[size]", defaultValue = "20") int pageSize) {
+		Page<ecommerce.app.inventory.domain.Purchase> page = listPurchasesUseCase.list(pageNumber, pageSize);
+		List<PurchaseResource> data = page.getContent().stream().map(PurchaseResource::from).collect(Collectors.toList());
+		JsonApiDocument<?> doc = JsonApiDocument.<List<PurchaseResource>>builder()
+				.data(data)
+				.meta(Map.of("totalRecords", page.getTotalElements()))
+				.build();
+		return ResponseEntity.ok(doc);
 	}
 
 	@Operation(summary = "Consultar inventario", description = "Devuelve el inventario de un producto. Valida que el producto exista en el Products Service.")

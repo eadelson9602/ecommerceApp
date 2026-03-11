@@ -3,6 +3,7 @@ package ecommerce.app.inventory.application.service;
 import ecommerce.app.inventory.application.model.GetInventoryResult;
 import ecommerce.app.inventory.application.model.PurchaseResult;
 import ecommerce.app.inventory.application.port.in.GetInventoryUseCase;
+import ecommerce.app.inventory.application.port.in.ListPurchasesUseCase;
 import ecommerce.app.inventory.application.port.in.ProcessPurchaseUseCase;
 import ecommerce.app.inventory.application.port.in.SetInventoryUseCase;
 import ecommerce.app.inventory.application.port.out.IdempotencyRecordPort;
@@ -14,6 +15,8 @@ import ecommerce.app.inventory.domain.Inventory;
 import ecommerce.app.inventory.domain.Purchase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +28,7 @@ import java.util.UUID;
  * Servicio de aplicación: implementa los casos de uso de inventario y compras.
  */
 @Service
-public class InventoryApplicationService implements GetInventoryUseCase, ProcessPurchaseUseCase, SetInventoryUseCase {
+public class InventoryApplicationService implements GetInventoryUseCase, ProcessPurchaseUseCase, SetInventoryUseCase, ListPurchasesUseCase {
 
 	private static final Logger log = LoggerFactory.getLogger(InventoryApplicationService.class);
 
@@ -118,5 +121,14 @@ public class InventoryApplicationService implements GetInventoryUseCase, Process
 			inv.setAvailable(available);
 		}
 		return inventoryRepository.save(inv);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public org.springframework.data.domain.Page<Purchase> list(int pageNumber, int pageSize) {
+		int size = Math.min(Math.max(1, pageSize), 100);
+		int zeroBased = Math.max(0, pageNumber <= 0 ? 0 : pageNumber - 1);
+		Pageable pageable = PageRequest.of(zeroBased, size);
+		return purchaseRepository.findAll(pageable);
 	}
 }

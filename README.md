@@ -152,6 +152,10 @@ Los tests de integración usan **H2** en perfil `test` (no requieren Docker). Pa
 Generado con [springdoc-openapi](https://springdoc.org/).  
 Health: `http://localhost:8080/actuator/health` y `http://localhost:8081/actuator/health`.
 
+**Postman:** En la raíz del repo está **`ecommerceApp-Postman-Collection.json`**. Importarla en Postman para probar Auth, Products e Inventory con variables `products_base` (8080) e `inventory_base` (8081). Tras ejecutar **Auth > Login** (admin/password), el token se guarda y se usa en el resto de peticiones.
+
+**Verificación vs prueba técnica:** Ver **`VERIFICACION_PRUEBA_TECNICA_BACKEND.md`** para el checklist de cumplimiento de requisitos.
+
 ---
 
 ## 6. Pruebas
